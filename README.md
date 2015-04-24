@@ -19,7 +19,7 @@ You're gonna need the following python packages installed:
 - [numpy](http://www.numpy.org/)
 - [matplotlib](http://matplotlib.org/)
 
-### Principle component analysis
+### Principal component analysis
 
 ```python
 plot_pca()
@@ -34,8 +34,6 @@ and plot:
   of Otto Products from pairwise classes
 
 
-
-
 ### Support vector machine
 
 ```python
@@ -44,6 +42,13 @@ svc(n_components=20)
 
 Run a support vector classification on `n_components` from a PCA-based dimensionality
 reduction.
+
+Some results
+
+`n_components`|log loss| runtime |
+--------------|--------|---------|
+  10          |  0.685 | 10 min  |
+
 
 ## License
 
