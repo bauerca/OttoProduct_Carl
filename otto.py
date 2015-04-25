@@ -91,7 +91,7 @@ def log_loss(y_true, y_prob, classes):
   return error / float(len(y_true))
 
 
-def cv(n_components=10):
+def svc(n_components=10):
   """
   Train a support vector classifier after dimensionality reduction
   with PCA.
@@ -125,4 +125,4 @@ def cv(n_components=10):
 
 
 #plot_pca()
-cv(n_components=20)
+svc(n_components=20)
