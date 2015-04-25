@@ -34,8 +34,6 @@ and plot:
   of Otto Products from pairwise classes
 
 
-
-
 ### Support vector machine
 
 ```python
