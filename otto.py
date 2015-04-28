@@ -6,15 +6,17 @@ from sklearn.preprocessing import scale, StandardScaler
 from sklearn.lda import LDA
 from sklearn.decomposition import PCA
 from sklearn.grid_search import GridSearchCV
-from sklearn.metrics import log_loss
 from matplotlib import pyplot as plt
 import itertools
 import sys
 
 
-def raw_scaled_features(data):
+def raw_scaled_features(data, log=False):
   feature_cols = ['feat_%d' % i for i in xrange(1, 94)]
-  return scale(1.0 * numpy.log(1.0 + data[feature_cols]))
+  if log:
+    return scale(numpy.log(1.0 + data[feature_cols]))
+  else:
+    return scale(1.0 * data[feature_cols])
 
 
 def plot_pca():
@@ -32,7 +34,7 @@ def plot_pca():
   plt.plot(pca.explained_variance_ratio_, marker='o')
   plt.show()
 
-  colors = ['k', 'b', 'r', 'g', 'y', 'm', 'c']
+  colors = ['b', 'g', 'r', 'k', 'y', 'm', 'c']
   # Component indices to compare. They will be chosen in pairs.
   # Lower index means more variance in that vector direction.
   comp_indices = [0, 1, 2]
@@ -53,13 +55,13 @@ def plot_pca():
     for class_pair in itertools.combinations(classes, 2):
       fig_num += 1
       plt.figure(fig_num)
-      for cls in class_pair:
+      for i, cls in enumerate(class_pair):
         indices = y == ('Class_%d' % cls)
         #print indices
         cx = components[indices, ci]
         cy = components[indices, cj]
         #print '%d points in Class %d' % (len(x), i)
-        plt.scatter(cx, cy, c=colors[cls % 7], label='Class %d' % cls)
+        plt.scatter(cx, cy, c=colors[i], label='Class %d' % cls)
       plt.title('PCA components %d and %d' % (ci, cj))
       plt.legend()
       plt.show()
@@ -79,15 +81,24 @@ def log_loss(y_true, y_prob, classes):
       The classes in y_prob sorted according to their column-order
       in y_prob.
   """
+  y_true = numpy.asarray(y_true)
+  y_prob = numpy.asarray(y_prob)
   error = 0.0
 
   for i, cls in enumerate(classes):
-    error -= numpy.log(y_prob[y_true == cls, i])
+    error -= numpy.sum(numpy.log(y_prob[y_true == cls, i]))
 
   return error / float(len(y_true))
 
 
-def cv():
+def cv(n_components=10):
+  """
+  Train a support vector classifier after dimensionality reduction
+  with PCA.
+
+  Each fold takes ~10 min. First fold gave log loss: 0.684875244651
+  """
+
   train = pandas.read_csv('train.csv')
   y = train['target'].values
   X = raw_scaled_features(train)
@@ -100,8 +111,8 @@ def cv():
     y_train = y[train_indices]
     X_test = X[test_indices]
     y_test = y[test_indices]
-  
-    pca = PCA(n_components=10)
+
+    pca = PCA(n_components=n_components)
     X_train = pca.fit_transform(X_train)
     X_test = pca.transform(X_test)
     #print X_train.shape
@@ -114,4 +125,4 @@ def cv():
 
 
 #plot_pca()
-#cv()
+cv(n_components=20)
