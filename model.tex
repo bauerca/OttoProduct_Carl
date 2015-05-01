@@ -1,0 +1,111 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\newcommand{\bx}{{\bf x}}
+\newcommand{\bxp}{\bx^{\prime}}
+\newcommand{\bxpp}{\bx^{\prime \prime}}
+\newcommand{\bbeta}{\boldsymbol\beta}
+
+\begin{document}
+
+\section*{Feature selection}
+
+Our training dataset is an input matrix, $X$, and
+has dimensions $(N, M)$, where each row is a
+sample of $M$ features, and there are $N$ rows, or samples. Row $i$
+will be labeled $\bx_i$.
+
+%\[
+%\max ( \sum_i \sum_{j < i} \sum_{\bx_k \in C_i} \sum_{\bx_l \in C_j}
+%d(\bx_k, \bx_l) \bigg / \sum_i \sigma_i )
+%\]
+Find a transformation $\Phi(\bx)$ into another feature space
+such that
+\[
+\max_{\Phi} ( \sum_i \sum_{j < i} d(\bar{\Phi}_i, \bar{\Phi}_j)
+\bigg / \sum_i \sigma_i )
+\]
+where $d(\cdot, \cdot)$ is some distance measure, $\sigma_i$ is the variance of
+the samples belonging to class $i$
+in the transformed feature space
+\[
+\sigma_i = \frac{1}{N_i} \sum_{\bx_j \in C_i} d( \Phi(\bx_j), \bar{\Phi}_i )
+\]
+and
+\[
+\bar{\Phi}_i = \frac{1}{N_i} \sum_{\bx_j \in C_i} \Phi(\bx_j)
+\]
+where $N_i$ is the size of (number of samples in) class $i$.
+
+
+If we assume a Euclidean distance,
+\[
+d(\Phi(\bx_i), \Phi(\bx_j)) = \| \Phi(\bx_i) - \Phi(\bx_j) \|
+\]
+we solve
+\[
+\max ( \sum_i \sum_{j < i} \| \bar{\Phi}_i - \bar{\Phi}_j \|
+\bigg / \sum_i \sigma_i )
+\]
+with
+\[
+\sigma_i = \frac{1}{N_i} \sum_{\bx_j \in C_i} \| \Phi(\bx_j) - \bar{\Phi}_i \|
+\]
+
+Consider the term
+\begin{align*}
+\| \bar{\Phi}_i - \bar{\Phi}_j \| &= 
+(\bar{\Phi}_i - \bar{\Phi}_j) \cdot (\bar{\Phi}_i - \bar{\Phi}_j) \\
+&= \sum_{\bx, \bxp \in C_i} \frac{k(\bx, \bxp)}{N_i^2} +
+   \sum_{\bx, \bxp \in C_j} \frac{k(\bx, \bxp)}{N_j^2} -
+   \sum_{\bx \in C_i} \sum_{\bxp \in C_j} \frac{2 k(\bx, \bxp)}{N_i N_j}
+\end{align*}
+where
+\[
+k(\bx_m, \bx_n) = \Phi(\bx_m) \cdot \Phi(\bx_n)
+\]
+is called the kernel function.
+
+We also have, for $\bx \in C_i$,
+\begin{align*}
+\| \Phi(\bx) - \bar{\Phi}_i \| &= 
+(\Phi(\bx) - \bar{\Phi}_i) \cdot (\Phi(\bx) - \bar{\Phi}_i) \\
+&= k(\bx, \bx) -
+   \sum_{\bxp \in C_i} \frac{2 k(\bx, \bxp)}{N_i} +
+   \sum_{\bxp, \bxpp \in C_i} \frac{k(\bxp, \bxpp)}{N_i^2}
+\end{align*}
+plugging into $\sigma_i$,
+\[
+\sigma_i =
+   \sum_{\bx \in C_i} \frac{k(\bx, \bx)}{N_i} -
+   \sum_{\bx, \bxp \in C_i} \frac{k(\bx, \bxp)}{N_i^2}
+\]
+
+
+and a linear transformation,
+\[
+f(\bx) = W \bx
+\]
+then the variance is
+\[
+\sigma_i = \sum_{\bx_j \in C_i} \| W ( \bar{\bx}_{C_i} - \bx_j ) \|
+\]
+where
+\[
+\bar{\bx}_{C_i} = \frac{1}{N_i} \sum_{\bx_j \in C_i} \bx_j
+\]
+we minimize
+\[
+\max ( \sum_i \sum_{j < i} \sum_{\bx_k \in C_i} \sum_{\bx_l \in C_j}
+(\bx_k - \bx_l)^{\rm T} W^{\rm T} W (\bx_k - \bx_l)
+\bigg / \sum_i \sum_{\bx_j \in C_i}
+(\bar{\bx}_{C_i} - \bx_j)^{\rm T} W^{\rm T} W (\bar{\bx}_{C_i} - \bx_j)
+\]
+
+\[
+\sum_{\bx_k \in C_i} d(\frac{1}{N_i} \sum_{\bx_l \in C_i} \bx_l, \bx_k)
+\]
+
+\end{document}
