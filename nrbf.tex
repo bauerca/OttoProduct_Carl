@@ -1,0 +1,72 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\newcommand{\bx}{{\bf x}}
+\newcommand{\by}{{\bf y}}
+\newcommand{\bw}{{\bf w}}
+\newcommand{\bz}{{\bf z}}
+\newcommand{\bb}{{\bf b}}
+\newcommand{\ba}{{\bf a}}
+\newcommand{\bk}{{\bf k}}
+\newcommand{\bxp}{\bx^{\prime}}
+\newcommand{\bxpp}{\bx^{\prime \prime}}
+\newcommand{\bbeta}{\boldsymbol\beta}
+
+\newcommand{\tbx}{\tilde{\bf x}}
+\newcommand{\tbxp}{\tilde{\bf x}^{\prime}}
+\newcommand{\tby}{\tilde{\bf y}}
+\newcommand{\tbyp}{\tilde{\bf y}^{\prime}}
+
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\begin{document}
+
+\section*{Feature selection}
+
+
+Our training dataset consists of $N$ input vectors (or samples) $\bx$,
+each of length $M$ (we say there are $M$ ``features''). Each sample is
+associated with a class. The set of training samples in class $i$ is $C_i$.
+The goal is to classify new samples based on the training set.
+
+Assign a radial basis function to each training point and let the
+radii be independent. The probability that a new point $\bx$ is in
+class $C_i$ is
+\[
+P_i(\bx) =
+\frac{
+  \sum_{\bxp \in C_i} e^{-(\bx - \bxp)^2 / r_{\bxp}^2}
+}{
+  \sum_{j}^{N_c} \sum_{\bxp \in C_j} e^{-(\bx - \bxp)^2 / r_{\bxp}^2}
+}
+\]
+The probability of a training point belonging to its correct class
+is
+\[
+P_i(\bx) =
+\frac{
+  1 + \sum_{\bxp \in C_i, \bxp \neq \bx} e^{-(\bx - \bxp)^2 / r_{\bxp}^2}
+}{
+  \sum_{j}^{N_c} \sum_{\bxp \in C_j} e^{-(\bx - \bxp)^2 / r_{\bxp}^2}
+}
+\]
+
+Choose the radii such that, in a leave-one-out
+strategy, the log loss is minimized:
+\[
+\min \sum_{\bx} \sum_{i}^{N_c} y_i(\bx) \log (P_i(\bx) -
+e^{-(\bx - \bxp)^2 / r_{\bxp}^2}
+\]
+
+Define the weight, $w_i(\bx)$ as
+\[
+\sum_{\bxp \in C_i} e^{-(\bx - \bxp)^2 / r_{\bxp}^2}
+\]
+
+
+
+
+\end{document}

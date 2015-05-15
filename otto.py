@@ -601,12 +601,16 @@ def eigencluster2():
   #Xall = 1.0 * features(train).values
   yall = train['target'].values
 
+  #print np.sum(Xall, axis=0)
+  #sys.exit()
+
   # All equally likely gives 2.1 or something.
   print log_loss(yall, np.ones((len(yall), 9)) / float(9), np.unique(yall))
   print log_loss(yall, np.zeros((len(yall), 9)), np.unique(yall))
 
-  X, y = restrict_to_classes(Xall, yall, ['Class_2', 'Class_3'])
-  X, y = random_subsets(X, y, n=1000)
+  X, y = Xall, yall
+  #X, y = restrict_to_classes(X, y, ['Class_6', 'Class_7'])
+  X, y = random_subsets(X, y, n=500)
   print 'Eigencluster2 with %d samples' % X.shape[0]
 
   ec = Eigencluster(k=10, width=10)
@@ -1433,9 +1437,9 @@ def net():
 #plot_pca_by_class(prep=False)
 #tmi()
 #cluster()
-#eigencluster2()
+eigencluster2()
 #grid()
 #knn()
 #jumble()
 #opt_svc()
-net()
+#net()

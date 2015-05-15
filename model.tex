@@ -4,27 +4,169 @@
 \usepackage{amssymb}
 
 \newcommand{\bx}{{\bf x}}
+\newcommand{\by}{{\bf y}}
+\newcommand{\bw}{{\bf w}}
+\newcommand{\bz}{{\bf z}}
+\newcommand{\bb}{{\bf b}}
+\newcommand{\ba}{{\bf a}}
+\newcommand{\bk}{{\bf k}}
 \newcommand{\bxp}{\bx^{\prime}}
 \newcommand{\bxpp}{\bx^{\prime \prime}}
 \newcommand{\bbeta}{\boldsymbol\beta}
+
+\newcommand{\tbx}{\tilde{\bf x}}
+\newcommand{\tbxp}{\tilde{\bf x}^{\prime}}
+\newcommand{\tby}{\tilde{\bf y}}
+\newcommand{\tbyp}{\tilde{\bf y}^{\prime}}
+
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
 
 \begin{document}
 
 \section*{Feature selection}
 
-Our training dataset is an input matrix, $X$, and
-has dimensions $(N, M)$, where each row is a
-sample of $M$ features, and there are $N$ rows, or samples. Row $i$
-will be labeled $\bx_i$.
+Our training dataset consists of $N$ input vectors (or samples) $\bx$,
+each of length $M$ (we say there are $M$ ``features''). Each sample is
+associated with a class. The set of training samples in class $i$ is $C_i$.
+The goal is to classify new samples based on the training set.
 
 %\[
 %\max ( \sum_i \sum_{j < i} \sum_{\bx_k \in C_i} \sum_{\bx_l \in C_j}
 %d(\bx_k, \bx_l) \bigg / \sum_i \sigma_i )
 %\]
-Find a transformation $\Phi(\bx)$ into another feature space
+Find a transformation $\Phi^*(\bx)$ into another feature space
 such that
 \[
-\max_{\Phi} ( \sum_i \sum_{j < i} d(\bar{\Phi}_i, \bar{\Phi}_j)
+\Phi^* = \argmax_{\Phi} \frac{\delta}{\sigma} = \argmax_{\Phi} ( \sum_i \sum_{j < i}
+(\delta_{ij} + \delta_{ji}) \Big / \sum_i \sigma_i )
+\]
+where $\delta_{ij}$ measures the separation of clusters
+$C_i$ and $C_j$, and $\sigma_i$ measures the compactness of cluster $C_i$.
+The most obvious choices are
+\[
+\delta_{ij} =
+  \frac{1}{N_i N_j}
+  \sum_{\bx \in C_i, \bxp \in C_j} \| \Phi(\bx) - \Phi(\bxp) \|^2
+\]
+and
+\[
+\sigma_i =
+  \frac{1}{N_i^2} \sum_{\bx, \bxp \in C_i} \| \Phi(\bx) - \Phi(\bxp) \|^2
+\]
+
+For classification, define $\delta_i(\bx)$
+\[
+\delta_i(\bx) = \sum_{\bxp \in C_i} \frac{1}{\| \Phi(\bx) - \Phi(\bxp)
+\|}
+\]
+The probability that $\bx$ should be added to $C_i$ is
+\[
+p_i(\bx) = \delta_i(\bx) \Big / \sum_j \delta_j(\bx)
+\]
+We would like to find the transformation that maximizes $\delta_{ij}$
+(for $i \neq j$) and minimizes $\sigma_i$.
+
+
+Because the cost function consists of only sums of distance measures,
+we can dispense of the explicit transformation in favor of the inner
+product in the transformed feature space. Consider
+\begin{align*}
+\| \Phi(\bx) - \Phi(\bxp) \|^2 &= 
+(\Phi(\bx) - \Phi(\bxp)) \cdot (\Phi(\bx) - \Phi(\bxp)) \\
+&= k(\bx, \bx) + k(\bxp, \bxp) - 2 k(\bx, \bxp)
+\end{align*}
+where we have defined the symmetric kernel $k(\bx, \by)$ = $\Phi(\bx)^{\rm
+T}\Phi(\by)$.
+
+The separation terms $\delta_{ij}$ become
+\[
+\delta_{ij} = 
+  \sum_{\bx \in C_i} \frac{k(\bx, \bx)}{N_i} +
+  \sum_{\bx \in C_j} \frac{k(\bx, \bx)}{N_j} -
+  \sum_{\bx \in C_i, \bxp \in C_j} \frac{2 k(\bx, \bxp)}{N_i N_j}
+\]
+and $\sigma_i$ becomes
+\[
+\sigma_i =
+   \sum_{\bx \in C_i} \frac{2 k(\bx, \bx)}{N_i} -
+   \sum_{\bx, \bxp \in C_i} \frac{2 k(\bx, \bxp)}{N_i^2}
+\]
+
+Consider the linear transformation into a
+$D$-dimensional subspace,
+\[
+\Phi(\bx) = W \bx
+\]
+where
+\[
+W = [\bw_1, \ldots, \bw_D]^T
+\]
+The goal is to find the vectors $\bw_i$ such that the clustering
+cost function is maximized. The linear kernel is
+\begin{align*}
+k(\bx, \by)
+  &= \bx^{\rm T} W^{\rm T} W \by \\
+  &= \sum_{i=1}^D (\bx^{\rm T} \bw_i) (\by^{\rm T} \bw_i)
+\end{align*}
+which allows us to write the cost function (piece by piece) as
+\begin{align*}
+\sigma &= \sum_{n=1}^D \bw_n^{\rm T} X_{\sigma} \bw_n \\
+\delta &= \sum_{n=1}^D \bw_n^{\rm T} X_{\delta} \bw_n
+\end{align*}
+where
+\begin{align*}
+X_{\sigma} &= \sum_i X_{\sigma_i} \\
+X_{\delta} &= \sum_i \sum_{i<j} X_{\delta_{ij}}
+\end{align*}
+and
+\begin{align*}
+X_{\sigma_i} &=
+  \sum_{\bx \in C_i} \frac{\bx \bx^{\rm T}}{N_i} -
+  \sum_{\bx, \bxp \in C_i} \frac{\bxp \bx^{\rm T}}{N_i^2} \\
+X_{\delta_{ij}} &=
+  \sum_{\bx \in C_i} \frac{\bx \bx^{\rm T}}{N_i} +
+  \sum_{\bx \in C_j} \frac{\bx \bx^{\rm T}}{N_j} -
+  \sum_{\bx \in C_i, \bxp \in C_j} \frac{2 \bxp \bx^{\rm T}}{N_i N_j}
+\end{align*}
+The first term in $X_{\sigma_i}$ and the first two terms in
+$X_{\delta_{ij}}$ are the familiar covariance matrices. The
+others we will call ``mixing'' matrices.
+
+The cost function $\delta / \sigma$ is now a Rayleigh quotient,
+maximized by the eigenvector with the largest eigenvalue of
+\[
+X_{\delta} \bw = \lambda X_{\sigma} \bw
+\]
+
+The matrices $\bxp \bx^{\rm T}$ each require $M^2$ multiplications.
+Forming one of the ``mixing'' matrices therefore requires $N_i N_j
+M^2$ multiplications and additions. For 100 features, and 1000 samples
+in a cluster, that is $10^{10}$ operations.
+
+
+\subsection*{Fourier}
+
+\[
+\Phi(\bx) = \int \tilde{\Phi}(\bk) e^{i \bk \cdot \bx} \, d \bk
+\]
+Approximate with a sum
+\[
+\Phi(\bx) = \sum_{\bk} \tilde{\Phi}_{\bk} e^{i \bk \cdot \bx}
+\]
+
+the kernel is
+\[
+k(\bx, \by) = \iint \tilde{\Phi}^*(\bk_x)^{\rm T}
+\tilde{\Phi}(\bk_y) e^{i (\bk_x \cdot \bx - \bk_y \cdot \by)}
+\, d \bk_x \, d \bk_y
+\]
+
+
+\section*{Old stuff}
+
+\[
+d(\bar{\Phi}_i, \bar{\Phi}_j)
 \bigg / \sum_i \sigma_i )
 \]
 where $d(\cdot, \cdot)$ is some distance measure, $\sigma_i$ is the variance of
@@ -84,10 +226,139 @@ plugging into $\sigma_i$,
 \]
 
 
-and a linear transformation,
+Consider the linear transformation into a
+$D$-dimensional subspace,
 \[
-f(\bx) = W \bx
+\Phi(\bx) = W \bx
 \]
+where
+\[
+W = [\bw_1, \ldots, \bw_D]^T
+\]
+The goal is to find the vectors $\bw_i$ such that the clustering
+cost function is minimized.
+The linear kernel is
+\begin{align*}
+k(\bx, \by)
+  &= \bx^{\rm T} W^{\rm T} W \by \\
+  &= \sum_{i=1}^D (\bx^{\rm T} \bw_i) (\by^{\rm T} \bw_i)
+\end{align*}
+which allows us to write the cost function (piece by piece) as
+\begin{align*}
+\sigma &= \sum_{n=1}^D \bw_n^{\rm T} X_{\sigma} \bw_n \\
+\delta &= \sum_{n=1}^D \bw_n^{\rm T} X_{\delta} \bw_n
+\end{align*}
+where
+\begin{align*}
+X_{\sigma} &= \sum_i X_{\sigma_i} \\
+X_{\delta} &= \sum_i \sum_{i<j} X_{\delta_{ij}}
+\end{align*}
+and
+\begin{align*}
+X_{\sigma_i} &=
+  \sum_{\bx \in C_i} \frac{\bx \bx^{\rm T}}{N_i} -
+  \sum_{\bx, \bxp \in C_i} \frac{\bxp \bx^{\rm T}}{N_i^2} \\
+X_{\delta_{ij}} &=
+  \sum_{\bx, \bxp \in C_i} \frac{\bxp \bx^{\rm T}}{N_i^2} +
+  \sum_{\bx, \bxp \in C_j} \frac{\bxp \bx^{\rm T}}{N_j^2} -
+  \sum_{\bx \in C_i, \bxp \in C_j} \frac{\bxp \bx^{\rm T}}{N_i N_j}
+\end{align*}
+
+The sum over $n$ in $\sigma$ and $\delta$ is unnecessary. This is
+because the linear transformation has turned the cost function into
+a Rayleigh quotient
+\[
+\frac{\bw^{\rm T} X_{\delta} \bw}{\bw^{\rm T} X_{\sigma} \bw}
+\]
+which is maximized by the eigenvector with the largest corresponding
+eigenvalue of the following eigenproblem
+\[
+X_{\delta} \bw = \lambda X_{\sigma} \bw
+\]
+
+This is a totally bizarre and unintuitive result; the linear
+transformation that maximizes the spread of the clusters projects each
+sample vector onto a line!?
+
+Okay, not so bizarre. This technique ignores direction entirely.
+Consider a dataset that has been shifted so that each feature has zero
+mean. The numerator of the cost function is zero in this case, and a
+scale/rotation linear transformation can do nothing about it. We must
+choose a different cost function that addresses direction or update
+our linear transformation to a more general affine transformation
+like
+\[
+\Phi(\bx) = A \bx + \bb
+\]
+in which case the kernel is
+\begin{align*}
+k(\bx, \by)
+  &= (A \bx + \bb)^{\rm T}(A \by + \bb) \\
+  &=  \sum_{i=1}^D
+        (\bx^{\rm T} \ba_i)(\by^{\rm T} \ba_i) +
+        (\bx^{\rm T} \ba_i) b_i +
+        (\by^{\rm T} \ba_i) b_i +
+        b_i b_i
+\end{align*}
+
+
+
+
+Consider the gradient of the kernel with respect to the transformation
+\begin{align*}
+\nabla_{\bw_i} k(\bx, \by)
+  &=  \nabla_{\bw_i} \sum_{j=1}^D (\bx^{\rm T} \bw_j) (\by^{\rm T}
+      \bw_j) \\
+  &=  \bx (\by^{\rm T} \bw_i) + \by (\bx^{\rm T} \bw_i)
+\end{align*}
+The gradient of the cost function $c$ is zero at the extrema; the
+following will be true for every $\bw_n$ in $W$,
+\[
+\nabla_{\bw_n} c = 0 =
+  \frac{\delta \nabla_{\bw_n} \sigma}{\sigma^2} -
+  \frac{\nabla_{\bw_n} \delta}{\sigma}
+\]
+which leads to
+\begin{align*}
+  \frac{\nabla_{\bw_n} \sigma}{\sigma} &=
+  \frac{\nabla_{\bw_n} \delta}{\delta}
+\end{align*}
+
+Proceeding piece by piece:
+\begin{align*}
+\nabla_{\bw_n} \sigma_i &=
+  \sum_{\bx \in C_i} \frac{2 (\bw_n^{\rm T} \bx) \bx}{N_i} -
+  \sum_{\bx, \bxp \in C_i}
+    \frac{(\bw_n^{\rm T} \bx) \bxp + (\bw_n^{\rm T} \bxp) \bx}{N_i^2}
+    \\
+&=
+  (\sum_{\bx \in C_i} \frac{2 \bx \bx^{\rm T}}{N_i} -
+  \sum_{\bx, \bxp \in C_i}
+    \frac{\bxp \bx^{\rm T} + \bx {\bxp}^{\rm T}}{N_i^2})
+  \bw_n \\
+&= X_{\sigma_i} \bw_n
+\end{align*}
+Similarly,
+\[
+\nabla_{\bw_n} \delta_{ij} = X_{\delta_{ij}} \bw_n
+\]
+where
+\[
+X_{\delta_{ij}} =
+  \sum_{\bx, \bxp \in C_i}
+    \frac{\bxp \bx^{\rm T} + \bx {\bxp}^{\rm T}}{N_i^2} +
+  \sum_{\bx, \bxp \in C_j}
+    \frac{\bxp \bx^{\rm T} + \bx {\bxp}^{\rm T}}{N_j^2} -
+  \sum_{\bx \in C_i, \bxp \in C_j}
+    \frac{\bxp \bx^{\rm T} + \bx {\bxp}^{\rm T}}{N_i N_j}
+\]
+Finally, we have
+\begin{align*}
+\nabla_{\bw_n} \sigma &= \sum_i X_{\sigma_i} \bw_n \\
+\nabla_{\bw_n} \delta &= \sum_i \sum_{j<i} X_{\delta_{ij}} \bw_n
+\end{align*}
+
+
 then the variance is
 \[
 \sigma_i = \sum_{\bx_j \in C_i} \| W ( \bar{\bx}_{C_i} - \bx_j ) \|
