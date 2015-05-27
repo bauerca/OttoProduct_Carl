@@ -476,9 +476,9 @@ class Eigencluster:
         # Visualize
         if True:
           #Z = np.dot(Xall, V[:,-1]) # 1-d array
-          #plt.hist([Zall[yall == ci], Zall[yall == cj]], bins=50, label=[ci, cj])
-          plt.scatter(np.dot(Xi, V[:,-1]), np.dot(Xi, V[:,-2]), c='b', label=ci)
-          plt.scatter(np.dot(Xj, V[:,-1]), np.dot(Xj, V[:,-2]), c='g', label=cj)
+          plt.hist([np.dot(Xi, V[:,-1]), np.dot(Xj, V[:,-1])], bins=50, label=[ci, cj])
+          #plt.scatter(np.dot(Xi, V[:,-1]), np.dot(Xi, V[:,-2]), c='b', label=ci)
+          #plt.scatter(np.dot(Xj, V[:,-1]), np.dot(Xj, V[:,-2]), c='g', label=cj)
           plt.legend()
           plt.show()
           plt.clf()
@@ -595,28 +595,27 @@ class Eigencluster:
 
 def eigencluster2():
   train = pandas.read_csv('train.csv')
-  Xall = np.log(1.0 + features(train).values)
+  #Xall = np.log(1.0 + features(train).values)
   #Xall = np.concatenate([Xall, np.ones((len(Xall), 1))], axis=1)
   #Xall = scale(1.0 * features(train).values)
-  #Xall = 1.0 * features(train).values
+  Xall = 1.0 * features(train).values
   yall = train['target'].values
 
   #print np.sum(Xall, axis=0)
   #sys.exit()
 
   # All equally likely gives 2.1 or something.
-  print log_loss(yall, np.ones((len(yall), 9)) / float(9), np.unique(yall))
-  print log_loss(yall, np.zeros((len(yall), 9)), np.unique(yall))
+  #print log_loss(yall, np.ones((len(yall), 9)) / float(9), np.unique(yall))
+  #print log_loss(yall, np.zeros((len(yall), 9)), np.unique(yall))
 
   X, y = Xall, yall
   #X, y = restrict_to_classes(X, y, ['Class_6', 'Class_7'])
-  X, y = random_subsets(X, y, n=500)
+  X, y = random_subsets(X, y, n=300)
   print 'Eigencluster2 with %d samples' % X.shape[0]
 
-  ec = Eigencluster(k=10, width=10)
+  ec = Eigencluster()
   cv(X, y, [ec])
   sys.exit()
-
 
   ec.fit(X, y)
   p = ec.predict_proba(Xall)
@@ -625,6 +624,130 @@ def eigencluster2():
 
   #print p
   print log_loss(yall, p, ec.classes)
+
+class NRBF:
+  def fit(self, X, y):
+    self.classes = np.unique(y).tolist()
+    Nc = self.Nc = len(self.classes)
+    N = self.N_train = len(X)
+    self.X_train = X
+    self.y_train = y
+
+    def f(a):
+      grad = np.zeros(N)
+      rbfs, d2 = self._rbfs(X, X, a)
+      #print 'Function eval'
+      #print '  radii:', 1.0 / np.sqrt(a)
+      #print '  distances^2:', d2
+      #print '  rbf evals:', rbfs
+      #print
+      # Leave one out:
+      np.fill_diagonal(rbfs, 0.0)
+      eta = d2 * rbfs / rbfs.sum(axis=0, keepdims=True)
+      loo_proba = self._proba(rbfs, y)
+
+      # For each alpha (gradient direction)
+      for n in xrange(N):
+        c = y[n]
+        cinds = (y == c)
+        not_cinds = (y != c)
+        ci = self.classes.index(c)
+        grad[n] += np.sum(eta[n, cinds] * (1.0 - loo_proba[cinds, ci]) / loo_proba[cinds, ci])
+        grad[n] += -np.sum(eta[n, not_cinds])
+
+      f = log_loss(y, loo_proba, self.classes)
+      print 'Log loss: %f' % f
+      #print 'proba:', loo_proba
+      print 'grad:', grad
+      return f, grad
+
+    Xtmp1, _ = random_subsets(X, y, n=100)
+    Xtmp2 = np.random.permutation(Xtmp1)
+    a_init = np.ones(N) / np.sum((Xtmp1 - Xtmp2)**2, axis=1).mean()
+    #print a_init
+
+    bounds = N * [(0.0, None)]
+
+    res = optimize.minimize(f, a_init, jac=True, method='L-BFGS-B', bounds=bounds)
+    self.a = res.x
+    print res
+
+  def _dists(self, X1, X2):
+    d = np.zeros((len(X1), len(X2)))
+    #print 'Distances shape:', d.shape
+
+    for i, x in enumerate(X1):
+      #print '  x_%d' % i
+      d[i, :] = np.sum((X2 - x)**2, axis=1)
+
+    return d
+
+  def _rbfs(self, X, X_train, a):
+    """
+    Return all the radial basis functions centered on all points in
+    X_train with "radii" a evaluated at all points in X.
+
+    Returns a (N, Nc, N_train) array where
+      N: number of points in X
+      Nc: number of unique classes
+      N_train: number of
+    """
+    N = len(X)
+    N_train = len(X_train)
+    rbfs = np.zeros((N, N_train))
+    d = self._dists(X, X_train)
+    tmp = np.zeros(N_train)
+
+    for i, x in enumerate(X):
+      # Stash the argument to the exponential
+      tmp[...] = a * d[i]
+
+      # extract common factor from all exponentials
+      tmp -= np.amin(tmp)
+
+      # find indices where exponential is nonzero.
+      #   exp(-x) > 1.0e-8 -> x < log(1.0e8)
+      nonzero = (tmp < np.log(1.0e8))
+      rbfs[i, nonzero] = np.exp(-tmp[nonzero])
+
+    return rbfs, d
+
+  def _proba(self, rbfs, y):
+    N = len(rbfs)
+    proba = np.zeros((N, self.Nc))
+    norms = np.sum(rbfs, axis=1)
+
+    for i, c in enumerate(self.classes):
+      inds = (y == c)
+      proba[:, i] = np.sum(rbfs[:, inds], axis=1) / norms
+
+    return proba
+
+  def predict_proba(self, X):
+    N = len(X)
+    rbfs, d2 = self._rbfs(X, self.X_train, self.a)
+    return self._proba(rbfs, self.y_train)
+
+
+def go_nrbf():
+  train = pandas.read_csv('train.csv')
+  #Xall = np.log(1.0 + features(train).values)
+  Xall = 1.0 * features(train).values
+  yall = train['target'].values
+  X, y = random_subsets(Xall, yall, n=100)
+
+  testX = np.array([[1.0, 0.1], [1.0, -0.1], [0.1, 1.0], [-0.1, 1.0]])
+  testy = np.array(['c1', 'c1', 'c2', 'c2'])
+
+  nrbf = NRBF()
+  nrbf.fit(X, y)
+  sys.exit()
+  #nrbf.fit(testX, testy)
+
+  print 'Probability prediction'
+  print ' ', np.unique(testy)
+  testXtest = np.array([[1.0, 0.0]])
+  print nrbf.predict_proba(testXtest)
 
 
 def eigencluster():
@@ -1443,3 +1566,4 @@ eigencluster2()
 #jumble()
 #opt_svc()
 #net()
+#go_nrbf()

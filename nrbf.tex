@@ -13,7 +13,10 @@
 \newcommand{\bxp}{\bx^{\prime}}
 \newcommand{\bxpp}{\bx^{\prime \prime}}
 \newcommand{\bbeta}{\boldsymbol\beta}
+\newcommand{\alphax}{\alpha_{\bx}}
+\newcommand{\alphaxp}{\alpha_{\bxp}}
 
+\newcommand{\tw}{\tilde{w}}
 \newcommand{\tbx}{\tilde{\bf x}}
 \newcommand{\tbxp}{\tilde{\bf x}^{\prime}}
 \newcommand{\tby}{\tilde{\bf y}}
@@ -36,37 +39,79 @@ Assign a radial basis function to each training point and let the
 radii be independent. The probability that a new point $\bx$ is in
 class $C_i$ is
 \[
-P_i(\bx) =
-\frac{
-  \sum_{\bxp \in C_i} e^{-(\bx - \bxp)^2 / r_{\bxp}^2}
-}{
-  \sum_{j}^{N_c} \sum_{\bxp \in C_j} e^{-(\bx - \bxp)^2 / r_{\bxp}^2}
-}
+P_i(\bx) = \frac{w_i(\bx)}{\sum_j^{N_c} w_j(\bx)}
 \]
-The probability of a training point belonging to its correct class
-is
+where we have defined the weight, $w_i(\bx)$
 \[
-P_i(\bx) =
-\frac{
-  1 + \sum_{\bxp \in C_i, \bxp \neq \bx} e^{-(\bx - \bxp)^2 / r_{\bxp}^2}
-}{
-  \sum_{j}^{N_c} \sum_{\bxp \in C_j} e^{-(\bx - \bxp)^2 / r_{\bxp}^2}
-}
+w_i(\bx) = \sum_{\bxp \in C_i} e^{-\alphaxp (\bx - \bxp)^2}
 \]
 
 Choose the radii such that, in a leave-one-out
-strategy, the log loss is minimized:
+strategy for all $\bx$ in the training set, the log loss is minimized:
 \[
-\min \sum_{\bx} \sum_{i}^{N_c} y_i(\bx) \log (P_i(\bx) -
-e^{-(\bx - \bxp)^2 / r_{\bxp}^2}
+\min \sum_{i}^{N_c} \sum_{\bx \in C_i}  q_i(\bx) = \min \sum_{i}^{N_c} \sum_{\bx \in C_i} -\log \tilde{P}_i(\bx)
+\]
+where
+$\tilde{P}_i(\bx)$ is the calculated probability that $\bx$ is in
+class $C_i$ given all training points {\it excluding} $\bx$. In other words,
+\[
+\tilde{P}_i(\bx) = \frac{\tilde{w}_i(\bx)}{\sum_j^{N_c} \tilde{w}_j(\bx)}
+\]
+and
+\[
+\tilde{w}_i(\bx) =
+\sum_{\bxp \in C_i, \bxp \neq \bx} e^{-\alphaxp (\bx - \bxp)^2}
 \]
 
-Define the weight, $w_i(\bx)$ as
+The gradient of the cost function consists of components
 \[
-\sum_{\bxp \in C_i} e^{-(\bx - \bxp)^2 / r_{\bxp}^2}
+\partial_{\alphaxp} q_i(\bx) = -\frac{\partial_{\alphaxp} \tilde{P}_i(\bx)}
+{\tilde{P}_i(\bx)}
+\]
+In general, if
+\[
+P = \frac{f}{g}
+\]
+then
+\begin{align*}
+P^{\prime}
+	&= \frac{f^{\prime}}{g} - \frac{f g^{\prime}}{g^2} \\
+	&= \frac{f^{\prime} - P g^{\prime}}{g}
+\end{align*}
+where the prime denotes derivative. Therefore we have,
+\[
+\partial_{\alphaxp} \tilde{P}_i(\bx) =
+\frac{\partial_{\alphaxp} \tw_i(\bx) - \tilde{P}_i(\bx) \sum_j^{N_c} \partial_{\alphaxp} \tw_j(\bx)}{\sum_j^{N_c} \tw_j(\bx)}
 \]
 
+Evaluating the weight derivatives gives:
+\[
+\partial_{\alphaxp} \tw_i(\bx) =
+\begin{cases}
+-(\bx - \bxp)^2 e^{-\alphaxp (\bx-\bxp)^2} & \bxp \in C_i \\
+0 & \bxp \notin C_i
+\end{cases}
+\]
+Therefore,
+with $\bxp \in C_k$,
+\[
+\partial_{\alphaxp} \tilde{P}_i(\bx) =
+(\delta_{i,k} - \tilde{P}_i(\bx)) \frac{\partial_{\alphaxp} \tw_k(\bx)}{\sum_j^{N_c} \tw_j(\bx)}
+\]
 
+Plugging back in to the cost function
+\[
+\partial_{\alphaxp} q_i(\bx) =
+\frac{\delta_{i,k} - \tilde{P}_i(\bx)}{\tilde{P}_i(\bx)}
+\frac{(\bx - \bxp)^2 e^{-\alphaxp (\bx - \bxp)^2}}{\sum_j^{N_c} \tw_j(\bx)}
+\]
+where $\bxp \in C_k$. Each component of the gradient is
+\[
+\partial_{\alphaxp} q =
+\sum_{i}^{N_c} \sum_{\bx \in C_i}
+\frac{\delta_{i,k} - \tilde{P}_i(\bx)}{\tilde{P}_i(\bx)}
+\frac{(\bx - \bxp)^2 e^{-\alphaxp (\bx - \bxp)^2}}{\sum_j^{N_c} \tw_j(\bx)}
+\]
 
 
 \end{document}
